@@ -74,6 +74,27 @@ export interface SulaChatUIProps {
   title?: string
   placeholder?: string
   compact?: boolean
+  /** URL logo untuk ikon asisten (kosong = 💬). */
+  logoUrl?: string | null
+}
+
+function AssistantIcon({ logoUrl, size = 36 }: { logoUrl?: string | null; size?: number }) {
+  const style: React.CSSProperties = {
+    width: size,
+    height: size,
+    borderRadius: size <= 40 ? '50%' : 12,
+    objectFit: 'contain',
+    background: 'transparent',
+    flexShrink: 0,
+  }
+  if (logoUrl) {
+    return <img src={logoUrl} alt="" style={style} />
+  }
+  return (
+    <div style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size <= 40 ? 18 : 32, background: 'rgba(99, 102, 241, 0.1)' }}>
+      💬
+    </div>
+  )
 }
 
 export function SulaChatUI({
@@ -86,6 +107,7 @@ export function SulaChatUI({
   title = 'SULA — Sulung Lab Assistant',
   placeholder = DEFAULT_PLACEHOLDER,
   compact = false,
+  logoUrl,
 }: SulaChatUIProps) {
   const [messages, setMessages] = useState<Array<Message>>(loadStoredMessages)
   const [input, setInput] = useState('')
@@ -200,8 +222,8 @@ export function SulaChatUI({
       <div ref={scrollRef} style={messagesAreaStyle}>
         {messages.length === 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: 40, textAlign: 'center' }}>
-            <div style={{ width: 64, height: 64, borderRadius: tokens.radiusLg, background: `linear-gradient(135deg, ${tokens.primary}22 0%, ${tokens.primary}11 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>
-              🤖
+            <div style={{ width: 64, height: 64, borderRadius: tokens.radiusLg, background: `linear-gradient(135deg, ${tokens.primary}22 0%, ${tokens.primary}11 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <AssistantIcon logoUrl={logoUrl} size={64} />
             </div>
             <div>
               <p style={{ fontWeight: 600, fontSize: 16, color: tokens.text, margin: 0 }}>{title}</p>
@@ -239,9 +261,7 @@ export function SulaChatUI({
             }}
           >
             {m.role === 'assistant' && (
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${tokens.primary}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
-                🤖
-              </div>
+              <AssistantIcon logoUrl={logoUrl} size={36} />
             )}
             <div
               style={{
@@ -262,12 +282,14 @@ export function SulaChatUI({
         ))}
         {isLoading && (
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${tokens.primary}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
-              🤖
-            </div>
-            <div style={{ ...bubbleBase, background: tokens.surface, color: tokens.textMuted, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span className="sula-spinner" style={{ width: 18, height: 18, border: `2px solid ${tokens.border}`, borderTopColor: tokens.primary, borderRadius: '50%', flexShrink: 0 }} />
-              Memproses...
+            <AssistantIcon logoUrl={logoUrl} size={36} />
+            <div style={{ ...bubbleBase, background: tokens.surface, color: tokens.textMuted, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <span>Memproses</span>
+              <span className="sula-dots" aria-hidden>
+                <span className="sula-dot" style={{ animationDelay: '0s' }}>.</span>
+                <span className="sula-dot" style={{ animationDelay: '0.2s' }}>.</span>
+                <span className="sula-dot" style={{ animationDelay: '0.4s' }}>.</span>
+              </span>
             </div>
           </div>
         )}
@@ -321,8 +343,8 @@ export function SulaChatUI({
         </button>
       </form>
       <style>{`
-        @keyframes sula-spin { to { transform: rotate(360deg); } }
-        .sula-spinner { animation: sula-spin 0.7s linear infinite; }
+        @keyframes sula-dot { 0%, 60% { opacity: 0.25; } 80%, 100% { opacity: 1; } }
+        .sula-dots .sula-dot { animation: sula-dot 0.9s ease-in-out infinite; }
         .sula-input:focus { border-color: ${tokens.primary}; box-shadow: 0 0 0 2px ${tokens.primary}33; }
         .sula-send-btn:not(:disabled):hover { background: ${tokens.primary} !important; filter: brightness(1.05); }
         .sula-clear-btn:hover:not(:disabled) { color: ${tokens.primary}; text-decoration: underline; }

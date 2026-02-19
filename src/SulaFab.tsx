@@ -17,6 +17,7 @@ export function SulaFab({
   showWhenPathPrefix = '',
   pathname: pathnameProp,
   placeholder,
+  logoUrl,
 }: SulaFabProps) {
   const resolvedAblyKey = ablyApiKey ?? (typeof getAblyKey === 'function' ? getAblyKey() : null)
   const askAssistant = useMemo(() => {
@@ -135,7 +136,12 @@ export function SulaFab({
         >
           <div style={dialogStyle} onClick={(e) => e.stopPropagation()}>
             <div style={headerStyle}>
-              <span id="sula-dialog-title">💬 {title}</span>
+              {logoUrl ? (
+                <img src={logoUrl} alt="" style={{ width: 28, height: 28, objectFit: 'contain', flexShrink: 0 }} />
+              ) : (
+                <span style={{ fontSize: 20 }}>💬</span>
+              )}
+              <span id="sula-dialog-title">{title}</span>
               <button type="button" className="sula-close-btn" style={closeStyle} onClick={() => setOpen(false)} aria-label="Tutup">
                 ×
               </button>
@@ -151,6 +157,7 @@ export function SulaFab({
                 title={title}
                 placeholder={placeholder}
                 compact
+                logoUrl={logoUrl}
               />
             </div>
           </div>

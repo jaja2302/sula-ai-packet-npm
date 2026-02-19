@@ -39,6 +39,8 @@ export interface SulaFabProps {
   sulaKey?: string | null
   /** Atau ambil key dinamis (e.g. dari env). Prioritas: sulaKey > getSulaKey(). */
   getSulaKey?: () => string | null
+  /** URL logo/brand untuk ikon asisten (kosong = pakai emoji 💬). */
+  logoUrl?: string | null
 }
 
 export interface SulaChatProps {
