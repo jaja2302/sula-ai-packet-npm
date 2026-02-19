@@ -13,10 +13,14 @@ export type AskResult =
   | { requestId: string; useAbly: true }
 
 export interface SulaFabProps {
-  /** Konteks SULA (warehouse, iot, dll.). Dikirim ke backend kamu. */
+  /** Konteks SULA (warehouse, iot, dll.). */
   appId: string
-  /** Kirim pesan ke SULA; biasanya panggil backend kamu yang POST ke SULA dengan app_id. */
-  askAssistant: (params: AskParams) => Promise<AskResult>
+  /** Kirim pesan ke SULA. Wajib jika tidak pakai ablyApiKey/getAblyKey. */
+  askAssistant?: (params: AskParams) => Promise<AskResult>
+  /** Ably API key (VITE_ABLY_API_KEY). Jika diset, chat via WebSocket saja; askAssistant dibangun otomatis. */
+  ablyApiKey?: string | null
+  /** Atau ambil key dinamis. Prioritas: ablyApiKey > getAblyKey(). */
+  getAblyKey?: () => string | null
   /** Judul dialog. */
   title?: string
   /** Token auth (ERPDA) untuk backend. */

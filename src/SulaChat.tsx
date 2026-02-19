@@ -6,6 +6,28 @@ const MAX_HISTORY_MESSAGES = 20
 const DEFAULT_PLACEHOLDER = 'Tanya SULA: barang, stok, request...'
 const FRIENDLY_QUOTA_MESSAGE = 'Maaf, tunggu sesaat lagi ya. SULA lagi tidak bisa diakses.'
 
+/** Design tokens — satu palet untuk konsistensi UI/UX */
+const tokens = {
+  primary: '#6366f1',
+  primaryDark: '#4f46e5',
+  bg: '#ffffff',
+  bgMuted: '#f8fafc',
+  surface: '#f1f5f9',
+  text: '#0f172a',
+  textMuted: '#64748b',
+  textSoft: '#94a3b8',
+  border: '#e2e8f0',
+  borderLight: '#f1f5f9',
+  error: '#dc2626',
+  radiusSm: 8,
+  radiusMd: 12,
+  radiusLg: 16,
+  radiusFull: 9999,
+  shadowSm: '0 1px 2px rgba(0,0,0,0.05)',
+  shadowBubble: '0 1px 3px rgba(0,0,0,0.08)',
+  fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+} as const
+
 function isQuotaOrRateLimitError(message: string): boolean {
   const lower = message.toLowerCase()
   return (
@@ -130,35 +152,46 @@ export function SulaChatUI({
     flexDirection: 'column',
     height: '100%',
     minHeight: 0,
+    fontFamily: tokens.fontFamily,
   }
   const messagesAreaStyle: React.CSSProperties = {
     flex: 1,
     overflowY: 'auto',
-    padding: 16,
+    padding: 20,
     display: 'flex',
     flexDirection: 'column',
     gap: 16,
     minHeight: 200,
+    background: tokens.bg,
     ...(compact ? { maxHeight: '50vh' } : {}),
   }
   const bubbleBase: React.CSSProperties = {
     maxWidth: '85%',
-    borderRadius: 16,
-    padding: '10px 16px',
+    borderRadius: tokens.radiusLg,
+    padding: '12px 16px',
     fontSize: 14,
+    lineHeight: 1.5,
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
+    boxShadow: tokens.shadowBubble,
   }
+
+  const examples = [
+    'Barang apa yang stoknya sedikit?',
+    'Ada berapa barang yang bisa dipinjam?',
+    'Request terbaru apa saja?',
+  ]
 
   return (
     <div style={containerStyle}>
       {messages.length > 0 && (
-        <div style={{ flexShrink: 0, borderBottom: '1px solid #eee', padding: '6px 8px', display: 'flex', justifyContent: 'flex-end', background: '#fafafa' }}>
+        <div style={{ flexShrink: 0, borderBottom: `1px solid ${tokens.border}`, padding: '8px 16px', display: 'flex', justifyContent: 'flex-end', background: tokens.bgMuted }}>
           <button
             type="button"
             onClick={clearHistory}
             disabled={isLoading}
-            style={{ background: 'none', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', fontSize: 13, color: '#666' }}
+            className="sula-clear-btn"
+            style={{ background: 'none', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', fontSize: 13, color: tokens.textMuted }}
           >
             🗑 Bersihkan riwayat
           </button>
@@ -166,14 +199,32 @@ export function SulaChatUI({
       )}
       <div ref={scrollRef} style={messagesAreaStyle}>
         {messages.length === 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 32, color: '#666', textAlign: 'center' }}>
-            <span style={{ fontSize: 40 }}>🤖</span>
-            <p style={{ fontWeight: 500 }}>{title}</p>
-            <p style={{ fontSize: 12 }}>Mulai obrolan. Contoh:</p>
-            <ul style={{ fontSize: 12, textAlign: 'left', marginTop: 4, paddingLeft: 20 }}>
-              <li>• Barang apa yang stoknya sedikit?</li>
-              <li>• Ada berapa barang yang bisa dipinjam?</li>
-              <li>• Request terbaru apa saja?</li>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: 40, textAlign: 'center' }}>
+            <div style={{ width: 64, height: 64, borderRadius: tokens.radiusLg, background: `linear-gradient(135deg, ${tokens.primary}22 0%, ${tokens.primary}11 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>
+              🤖
+            </div>
+            <div>
+              <p style={{ fontWeight: 600, fontSize: 16, color: tokens.text, margin: 0 }}>{title}</p>
+              <p style={{ fontSize: 13, color: tokens.textMuted, margin: '6px 0 0 0' }}>Mulai obrolan. Contoh:</p>
+            </div>
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, width: '100%', maxWidth: 320 }}>
+              {examples.map((q, i) => (
+                <li
+                  key={i}
+                  style={{
+                    fontSize: 13,
+                    color: tokens.textMuted,
+                    textAlign: 'left',
+                    padding: '10px 14px',
+                    marginTop: 6,
+                    background: tokens.bgMuted,
+                    border: `1px solid ${tokens.borderLight}`,
+                    borderRadius: tokens.radiusSm,
+                  }}
+                >
+                  • {q}
+                </li>
+              ))}
             </ul>
           </div>
         )}
@@ -184,44 +235,51 @@ export function SulaChatUI({
               display: 'flex',
               gap: 12,
               justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start',
+              alignItems: 'flex-end',
             }}
           >
             {m.role === 'assistant' && (
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${tokens.primary}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
                 🤖
               </div>
             )}
             <div
               style={{
                 ...bubbleBase,
-                ...(m.role === 'user' ? { background: '#0f172a', color: '#fff' } : { background: '#f1f5f9' }),
+                ...(m.role === 'user'
+                  ? { background: tokens.primaryDark, color: '#fff' }
+                  : { background: tokens.surface, color: tokens.text }),
               }}
             >
               {m.content}
             </div>
             {m.role === 'user' && (
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: tokens.border, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
                 👤
               </div>
             )}
           </div>
         ))}
         {isLoading && (
-          <div style={{ display: 'flex', gap: 12 }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${tokens.primary}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
               🤖
             </div>
-            <div style={{ ...bubbleBase, background: '#f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 16, height: 16, border: '2px solid #94a3b8', borderTopColor: 'transparent', borderRadius: '50%', animation: 'sula-spin 0.8s linear infinite' }} />
+            <div style={{ ...bubbleBase, background: tokens.surface, color: tokens.textMuted, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span className="sula-spinner" style={{ width: 18, height: 18, border: `2px solid ${tokens.border}`, borderTopColor: tokens.primary, borderRadius: '50%', flexShrink: 0 }} />
               Memproses...
             </div>
           </div>
         )}
       </div>
-      {error && <p style={{ padding: '8px 16px', fontSize: 13, color: '#b91c1c' }}>{error}</p>}
+      {error && (
+        <p style={{ padding: '10px 16px', fontSize: 13, color: tokens.error, background: `${tokens.error}12`, margin: 0, flexShrink: 0 }}>
+          {error}
+        </p>
+      )}
       <form
         onSubmit={handleSubmit}
-        style={{ flexShrink: 0, display: 'flex', gap: 8, padding: 16, borderTop: '1px solid #e2e8f0', background: '#fff' }}
+        style={{ flexShrink: 0, display: 'flex', gap: 10, padding: 16, borderTop: `1px solid ${tokens.border}`, background: tokens.bg }}
       >
         <input
           type="text"
@@ -230,31 +288,45 @@ export function SulaChatUI({
           placeholder={placeholder}
           disabled={isLoading}
           autoComplete="off"
+          className="sula-input"
           style={{
             flex: 1,
-            padding: '10px 14px',
-            borderRadius: 8,
-            border: '1px solid #e2e8f0',
+            padding: '12px 16px',
+            borderRadius: tokens.radiusMd,
+            border: `1px solid ${tokens.border}`,
             fontSize: 14,
+            color: tokens.text,
+            outline: 'none',
           }}
         />
         <button
           type="submit"
           disabled={isLoading || !input.trim()}
+          className="sula-send-btn"
           style={{
-            width: 44,
-            height: 44,
-            borderRadius: 8,
+            width: 48,
+            height: 48,
+            borderRadius: tokens.radiusMd,
             border: 'none',
-            background: isLoading ? '#cbd5e1' : '#0f172a',
+            background: isLoading || !input.trim() ? tokens.border : tokens.primaryDark,
             color: '#fff',
-            cursor: isLoading ? 'not-allowed' : 'pointer',
+            cursor: isLoading || !input.trim() ? 'not-allowed' : 'pointer',
+            fontSize: 18,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
           ➤
         </button>
       </form>
-      <style>{`@keyframes sula-spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes sula-spin { to { transform: rotate(360deg); } }
+        .sula-spinner { animation: sula-spin 0.7s linear infinite; }
+        .sula-input:focus { border-color: ${tokens.primary}; box-shadow: 0 0 0 2px ${tokens.primary}33; }
+        .sula-send-btn:not(:disabled):hover { background: ${tokens.primary} !important; filter: brightness(1.05); }
+        .sula-clear-btn:hover:not(:disabled) { color: ${tokens.primary}; text-decoration: underline; }
+      `}</style>
     </div>
   )
 }

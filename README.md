@@ -19,6 +19,30 @@ Lalu pasang komponen dan sambungkan ke backend kamu yang memanggil SULA dengan `
 
 ## Pemakaian
 
+### 0. Full handle — hanya env + FAB (tanpa route/API di app)
+
+Jika chat ke SULA lewat **WebSocket (Ably)** saja, kamu **tidak perlu** bikin route, API, atau file assistant di app. Cukup:
+
+1. **Env** di app: `VITE_ABLY_API_KEY` dan `VITE_SULA_KEY` (opsional, untuk auth SULA).
+2. **Satu komponen** di root layout (atau halaman mana saja):
+
+```tsx
+import { SulaFab } from 'sula-ai'
+
+// Di root layout atau page
+<SulaFab
+  appId="warehouse"
+  ablyApiKey={import.meta.env.VITE_ABLY_API_KEY}
+  sulaKey={import.meta.env.VITE_SULA_KEY}
+  getToken={() => getToken()}  // opsional
+  showWhenPathPrefix="/warehouse"  // opsional: FAB hanya di path ini
+  pathname={pathname}  // dari useLocation().pathname
+/>
+```
+
+- **Peer dependency**: pasang `ably` di app (`npm install ably`).
+- FAB otomatis subscribe ke `sula:reply` dulu, baru publish ke `sula:request`, jadi error (mis. 401) sampai ke UI dan tidak loading terus.
+
 ### 1. Di app (React) yang sudah punya backend ke SULA
 
 Kamu punya server function / API yang menerima `message`, `history`, `token`, dan `app_id`, lalu memanggil SULA (HTTP atau via Ably). Contoh untuk TanStack Start:
@@ -69,7 +93,9 @@ Jika backend kamu langsung HTTP ke SULA dan mengembalikan `reply`:
 | Prop | Tipe | Wajib | Keterangan |
 |------|------|--------|------------|
 | `appId` | `string` | ✅ | Konteks SULA (e.g. `warehouse`, `iot`). Dikirim ke backend kamu. |
-| `askAssistant` | `(params) => Promise<{ reply } \| { requestId, useAbly }>` | ✅ | Fungsi yang mengirim pesan ke SULA (biasanya via backend). |
+| `askAssistant` | `(params) => Promise<...>` | Jika tanpa Ably | Fungsi yang mengirim pesan ke SULA (via backend). Wajib jika tidak pakai `ablyApiKey`/`getAblyKey`. |
+| `ablyApiKey` | `string \| null` | - | Ably API key. Jika diset, chat via WebSocket saja; `askAssistant` dibangun otomatis. |
+| `getAblyKey` | `() => string \| null` | - | Ambil Ably key dinamis. Prioritas: `ablyApiKey` > `getAblyKey()`. |
 | `title` | `string` | - | Judul dialog. Default: `"SULA — Sulung Lab Assistant"`. |
 | `getToken` | `() => string \| null` | - | Token auth (ERPDA) untuk backend. |
 | `useAbly` | `boolean` | - | Jika `true`, `askAssistant` boleh return `{ requestId, useAbly: true }` dan pakai `waitForAblyReply`. |
