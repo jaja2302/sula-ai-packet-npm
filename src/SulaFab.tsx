@@ -18,6 +18,7 @@ export function SulaFab({
   pathname: pathnameProp,
   placeholder,
   logoUrl,
+  examplePrompts,
 }: SulaFabProps) {
   const resolvedAblyKey = ablyApiKey ?? (typeof getAblyKey === 'function' ? getAblyKey() : null)
   const askAssistant = useMemo(() => {
@@ -158,6 +159,8 @@ export function SulaFab({
                 placeholder={placeholder}
                 compact
                 logoUrl={logoUrl}
+                examplePrompts={examplePrompts}
+                appId={appId}
               />
             </div>
           </div>

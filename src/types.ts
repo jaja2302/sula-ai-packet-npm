@@ -41,6 +41,8 @@ export interface SulaFabProps {
   getSulaKey?: () => string | null
   /** URL logo/brand untuk ikon asisten (kosong = pakai emoji 💬). */
   logoUrl?: string | null
+  /** Contoh pertanyaan di UI (sesuai app_id agar tidak campur: smartlabs vs warehouse). Kosong = pakai default per appId. */
+  examplePrompts?: string[]
 }
 
 export interface SulaChatProps {

@@ -4,6 +4,21 @@ import type { Message, AskParams, AskResult } from './types'
 const STORAGE_KEY = 'sula-chat-history'
 const MAX_HISTORY_MESSAGES = 20
 const DEFAULT_PLACEHOLDER = 'Tanya SULA: barang, stok, request...'
+
+/** Default contoh pertanyaan per app_id agar UI tidak campur (warehouse vs smartlabs). */
+const DEFAULT_EXAMPLES_BY_APP_ID: Record<string, string[]> = {
+  warehouse: [
+    'Barang apa yang stoknya sedikit?',
+    'Ada berapa barang yang bisa dipinjam?',
+    'Request terbaru apa saja?',
+  ],
+  smartlabs: [
+    'Lacak status sampel saya',
+    'Jenis sampel apa saja yang bisa dianalisis?',
+    'Ada berita atau bulletin terbaru?',
+  ],
+}
+const DEFAULT_EXAMPLES_FALLBACK = DEFAULT_EXAMPLES_BY_APP_ID.warehouse
 const FRIENDLY_QUOTA_MESSAGE = 'Maaf, tunggu sesaat lagi ya. SULA lagi tidak bisa diakses.'
 
 /** Design tokens — satu palet untuk konsistensi UI/UX */
@@ -76,6 +91,10 @@ export interface SulaChatUIProps {
   compact?: boolean
   /** URL logo untuk ikon asisten (kosong = 💬). */
   logoUrl?: string | null
+  /** Contoh pertanyaan yang ditampilkan (sesuai app_id: smartlabs vs warehouse). Kosong = pakai default per appId. */
+  examplePrompts?: string[]
+  /** app_id (warehouse, smartlabs, dll.) untuk memilih default examplePrompts bila examplePrompts tidak diisi. */
+  appId?: string
 }
 
 function AssistantIcon({ logoUrl, size = 36 }: { logoUrl?: string | null; size?: number }) {
@@ -108,7 +127,14 @@ export function SulaChatUI({
   placeholder = DEFAULT_PLACEHOLDER,
   compact = false,
   logoUrl,
+  examplePrompts: examplePromptsProp,
+  appId,
 }: SulaChatUIProps) {
+  const examples: string[] = Array.isArray(examplePromptsProp)
+    ? examplePromptsProp
+    : (appId && Array.isArray(DEFAULT_EXAMPLES_BY_APP_ID[appId])
+        ? DEFAULT_EXAMPLES_BY_APP_ID[appId]
+        : DEFAULT_EXAMPLES_FALLBACK)
   const [messages, setMessages] = useState<Array<Message>>(loadStoredMessages)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -198,11 +224,10 @@ export function SulaChatUI({
     boxShadow: tokens.shadowBubble,
   }
 
-  const examples = [
-    'Barang apa yang stoknya sedikit?',
-    'Ada berapa barang yang bisa dipinjam?',
-    'Request terbaru apa saja?',
-  ]
+  const handleExampleClick = (q: string) => {
+    if (isLoading) return
+    setInput(q)
+  }
 
   return (
     <div style={containerStyle}>
@@ -230,21 +255,28 @@ export function SulaChatUI({
               <p style={{ fontSize: 13, color: tokens.textMuted, margin: '6px 0 0 0' }}>Mulai obrolan. Contoh:</p>
             </div>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, width: '100%', maxWidth: 320 }}>
-              {examples.map((q, i) => (
-                <li
-                  key={i}
-                  style={{
-                    fontSize: 13,
-                    color: tokens.textMuted,
-                    textAlign: 'left',
-                    padding: '10px 14px',
-                    marginTop: 6,
-                    background: tokens.bgMuted,
-                    border: `1px solid ${tokens.borderLight}`,
-                    borderRadius: tokens.radiusSm,
-                  }}
-                >
-                  • {q}
+              {examples.map((q: string, i: number) => (
+                <li key={i}>
+                  <button
+                    type="button"
+                    onClick={() => handleExampleClick(q)}
+                    disabled={isLoading}
+                    className="sula-example-btn"
+                    style={{
+                      width: '100%',
+                      fontSize: 13,
+                      color: tokens.textMuted,
+                      textAlign: 'left',
+                      padding: '10px 14px',
+                      marginTop: 6,
+                      background: tokens.bgMuted,
+                      border: `1px solid ${tokens.borderLight}`,
+                      borderRadius: tokens.radiusSm,
+                      cursor: isLoading ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    • {q}
+                  </button>
                 </li>
               ))}
             </ul>
@@ -348,6 +380,7 @@ export function SulaChatUI({
         .sula-input:focus { border-color: ${tokens.primary}; box-shadow: 0 0 0 2px ${tokens.primary}33; }
         .sula-send-btn:not(:disabled):hover { background: ${tokens.primary} !important; filter: brightness(1.05); }
         .sula-clear-btn:hover:not(:disabled) { color: ${tokens.primary}; text-decoration: underline; }
+        .sula-example-btn:hover:not(:disabled) { border-color: ${tokens.primary}; color: ${tokens.primary}; background: ${tokens.primary}0a; }
       `}</style>
     </div>
   )

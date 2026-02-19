@@ -1,6 +1,6 @@
 {
   "name": "sula-ai",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "FAB + chat widget for SULA (Sulung Lab Assistant). Use in any web with your own backend and app_id.",
   "type": "module",
   "main": "./dist/index.js",
