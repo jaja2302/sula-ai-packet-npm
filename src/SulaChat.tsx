@@ -44,6 +44,9 @@ function saveStoredMessages(messages: Array<Message>) {
 export interface SulaChatUIProps {
   askAssistant: (params: AskParams) => Promise<AskResult>
   getToken?: () => string | null
+  /** API key SULA (prioritas di atas getSulaKey). */
+  sulaKey?: string | null
+  getSulaKey?: () => string | null
   useAbly?: boolean
   waitForAblyReply?: (requestId: string) => Promise<{ reply: string } | { error: string }>
   title?: string
@@ -54,6 +57,8 @@ export interface SulaChatUIProps {
 export function SulaChatUI({
   askAssistant,
   getToken,
+  sulaKey: sulaKeyProp,
+  getSulaKey,
   useAbly,
   waitForAblyReply,
   title = 'SULA — Sulung Lab Assistant',
@@ -95,7 +100,8 @@ export function SulaChatUI({
     try {
       const history = newMessages.slice(0, -1)
       const token = typeof getToken === 'function' ? getToken() : null
-      const result = await askAssistant({ message: text, history, token })
+      const sulaKey = sulaKeyProp ?? (typeof getSulaKey === 'function' ? getSulaKey() : null)
+      const result = await askAssistant({ message: text, history, token, sulaKey })
 
       let reply: string
       if ('requestId' in result && result.useAbly) {

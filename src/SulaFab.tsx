@@ -7,6 +7,8 @@ export function SulaFab({
   askAssistant,
   title = 'SULA — Sulung Lab Assistant',
   getToken,
+  sulaKey,
+  getSulaKey,
   useAbly,
   waitForAblyReply,
   showWhenPathPrefix = '',
@@ -115,6 +117,8 @@ export function SulaFab({
               <SulaChatUI
                 askAssistant={askAssistant}
                 getToken={getToken}
+                sulaKey={sulaKey}
+                getSulaKey={getSulaKey}
                 useAbly={useAbly}
                 waitForAblyReply={waitForAblyReply}
                 title={title}

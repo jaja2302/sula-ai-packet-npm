@@ -39,10 +39,11 @@
     "fab",
     "widget"
   ],
+  "author": "jaja valentino",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/warehouse-srs",
+    "url": "https://github.com/jaja2302/sula-ai-packet-npm.git",
     "directory": "sula-ai"
   }
 }
