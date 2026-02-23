@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react'
-import type { Message, AskParams, AskResult } from './types'
+import React, { useEffect, useRef, useState } from 'react';
 
-const STORAGE_KEY = 'sula-chat-history'
-const MAX_HISTORY_MESSAGES = 20
-const DEFAULT_PLACEHOLDER = 'Tanya SULA: barang, stok, request...'
+import type { AskParams, AskResult, Message } from './types';
+
+const STORAGE_KEY = 'sula-chat-history';
+const MAX_HISTORY_MESSAGES = 20;
+const DEFAULT_PLACEHOLDER = 'Tanya SULA: barang, stok, request...';
 
 /** Default contoh pertanyaan per app_id agar UI tidak campur (warehouse vs smartlabs). */
 const DEFAULT_EXAMPLES_BY_APP_ID: Record<string, string[]> = {
@@ -17,9 +18,9 @@ const DEFAULT_EXAMPLES_BY_APP_ID: Record<string, string[]> = {
     'Jenis sampel apa saja yang bisa dianalisis?',
     'Ada berita atau bulletin terbaru?',
   ],
-}
-const DEFAULT_EXAMPLES_FALLBACK = DEFAULT_EXAMPLES_BY_APP_ID.warehouse
-const FRIENDLY_QUOTA_MESSAGE = 'Maaf, tunggu sesaat lagi ya. SULA lagi tidak bisa diakses.'
+};
+const DEFAULT_EXAMPLES_FALLBACK = DEFAULT_EXAMPLES_BY_APP_ID.warehouse;
+const FRIENDLY_QUOTA_MESSAGE = 'Maaf, tunggu sesaat lagi ya. SULA lagi tidak bisa diakses.';
 
 /** Design tokens — satu palet untuk konsistensi UI/UX */
 const tokens = {
@@ -41,10 +42,10 @@ const tokens = {
   shadowSm: '0 1px 2px rgba(0,0,0,0.05)',
   shadowBubble: '0 1px 3px rgba(0,0,0,0.08)',
   fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-} as const
+} as const;
 
 function isQuotaOrRateLimitError(message: string): boolean {
-  const lower = message.toLowerCase()
+  const lower = message.toLowerCase();
   return (
     lower.includes('quota') ||
     lower.includes('exceeded') ||
@@ -52,49 +53,106 @@ function isQuotaOrRateLimitError(message: string): boolean {
     lower.includes('rate-limit') ||
     lower.includes('sibuk') ||
     lower.includes('503')
-  )
+  );
 }
 
 function loadStoredMessages(): Array<Message> {
-  if (typeof sessionStorage === 'undefined') return []
+  if (typeof sessionStorage === 'undefined') return [];
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as Array<{ role: string; content: string }>
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter(
-      (m): m is Message =>
-        (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string',
-    ).slice(-MAX_HISTORY_MESSAGES)
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Array<{ role: string; content: string }>;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(
+        (m): m is Message =>
+          (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string'
+      )
+      .slice(-MAX_HISTORY_MESSAGES);
   } catch {
-    return []
+    return [];
   }
 }
 
 function saveStoredMessages(messages: Array<Message>) {
-  if (typeof sessionStorage === 'undefined') return
+  if (typeof sessionStorage === 'undefined') return;
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-MAX_HISTORY_MESSAGES)))
-  } catch {}
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-MAX_HISTORY_MESSAGES)));
+  } catch {
+    console.error('Failed to save stored messages');
+  }
+}
+
+/** Matches http/https URLs for linkifying response text */
+const URL_REGEX = /(https?:\/\/[^\s]+)/g;
+const IS_URL = /^https?:\/\/[^\s]+$/;
+
+/** Inline markdown: **bold**, __bold__, *italic*, _italic_, `code` */
+const MD_REGEX = /\*\*([^*]+)\*\*|__([^_]+)__|\*([^*]+)\*|_([^_]+)_|`([^`]+)`/g;
+
+function parseMarkdownSegment(text: string, keyPrefix: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let keyIdx = 0;
+  let m: RegExpExecArray | null;
+  MD_REGEX.lastIndex = 0;
+  while ((m = MD_REGEX.exec(text)) !== null) {
+    if (m.index > lastIndex) {
+      nodes.push(<React.Fragment key={`${keyPrefix}-${keyIdx++}`}>{text.slice(lastIndex, m.index)}</React.Fragment>);
+    }
+    if (m[1] !== undefined) nodes.push(<strong key={`${keyPrefix}-${keyIdx++}`}>{m[1]}</strong>);
+    else if (m[2] !== undefined) nodes.push(<strong key={`${keyPrefix}-${keyIdx++}`}>{m[2]}</strong>);
+    else if (m[3] !== undefined) nodes.push(<em key={`${keyPrefix}-${keyIdx++}`}>{m[3]}</em>);
+    else if (m[4] !== undefined) nodes.push(<em key={`${keyPrefix}-${keyIdx++}`}>{m[4]}</em>);
+    else if (m[5] !== undefined) nodes.push(<code key={`${keyPrefix}-${keyIdx++}`} style={{ background: tokens.borderLight, padding: '1px 4px', borderRadius: 4, fontSize: '0.92em' }}>{m[5]}</code>);
+    lastIndex = MD_REGEX.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    nodes.push(<React.Fragment key={`${keyPrefix}-${keyIdx++}`}>{text.slice(lastIndex)}</React.Fragment>);
+  }
+  return nodes;
+}
+
+function linkifyContent(content: string, messageIndex: number): React.ReactNode {
+  const parts = content.split(URL_REGEX);
+  const keyPrefix = `msg-${messageIndex}`;
+  let keyIdx = 0;
+  return parts.map((part) => {
+    if (IS_URL.test(part)) {
+      return (
+        <a
+          key={`${keyPrefix}-${keyIdx++}`}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: tokens.primary, textDecoration: 'underline' }}>
+          {part}
+        </a>
+      );
+    }
+    const segKey = `${keyPrefix}-${keyIdx++}`;
+    const mdNodes = parseMarkdownSegment(part, segKey);
+    return <React.Fragment key={segKey}>{mdNodes}</React.Fragment>;
+  });
 }
 
 export interface SulaChatUIProps {
-  askAssistant: (params: AskParams) => Promise<AskResult>
-  getToken?: () => string | null
+  askAssistant: (params: AskParams) => Promise<AskResult>;
+  getToken?: () => string | null;
   /** API key SULA (prioritas di atas getSulaKey). */
-  sulaKey?: string | null
-  getSulaKey?: () => string | null
-  useAbly?: boolean
-  waitForAblyReply?: (requestId: string) => Promise<{ reply: string } | { error: string }>
-  title?: string
-  placeholder?: string
-  compact?: boolean
+  sulaKey?: string | null;
+  getSulaKey?: () => string | null;
+  useAbly?: boolean;
+  waitForAblyReply?: (requestId: string) => Promise<{ reply: string } | { error: string }>;
+  title?: string;
+  placeholder?: string;
+  compact?: boolean;
   /** URL logo untuk ikon asisten (kosong = 💬). */
-  logoUrl?: string | null
+  logoUrl?: string | null;
   /** Contoh pertanyaan yang ditampilkan (sesuai app_id: smartlabs vs warehouse). Kosong = pakai default per appId. */
-  examplePrompts?: string[]
+  examplePrompts?: string[];
   /** app_id (warehouse, smartlabs, dll.) untuk memilih default examplePrompts bila examplePrompts tidak diisi. */
-  appId?: string
+  appId?: string;
 }
 
 function AssistantIcon({ logoUrl, size = 36 }: { logoUrl?: string | null; size?: number }) {
@@ -105,15 +163,23 @@ function AssistantIcon({ logoUrl, size = 36 }: { logoUrl?: string | null; size?:
     objectFit: 'contain',
     background: 'transparent',
     flexShrink: 0,
-  }
+  };
   if (logoUrl) {
-    return <img src={logoUrl} alt="" style={style} />
+    return <img src={logoUrl} alt="" style={style} />;
   }
   return (
-    <div style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size <= 40 ? 18 : 32, background: 'rgba(99, 102, 241, 0.1)' }}>
+    <div
+      style={{
+        ...style,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: size <= 40 ? 18 : 32,
+        background: 'rgba(99, 102, 241, 0.1)',
+      }}>
       💬
     </div>
-  )
+  );
 }
 
 export function SulaChatUI({
@@ -121,6 +187,7 @@ export function SulaChatUI({
   getToken,
   sulaKey: sulaKeyProp,
   getSulaKey,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   useAbly,
   waitForAblyReply,
   title = 'SULA — Sulung Lab Assistant',
@@ -132,66 +199,74 @@ export function SulaChatUI({
 }: SulaChatUIProps) {
   const examples: string[] = Array.isArray(examplePromptsProp)
     ? examplePromptsProp
-    : (appId && Array.isArray(DEFAULT_EXAMPLES_BY_APP_ID[appId])
-        ? DEFAULT_EXAMPLES_BY_APP_ID[appId]
-        : DEFAULT_EXAMPLES_FALLBACK)
-  const [messages, setMessages] = useState<Array<Message>>(loadStoredMessages)
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
+    : appId && Array.isArray(DEFAULT_EXAMPLES_BY_APP_ID[appId])
+    ? DEFAULT_EXAMPLES_BY_APP_ID[appId]
+    : DEFAULT_EXAMPLES_FALLBACK;
+  const [messages, setMessages] = useState<Array<Message>>(loadStoredMessages);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages])
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [messages]);
 
   useEffect(() => {
-    saveStoredMessages(messages)
-  }, [messages])
+    saveStoredMessages(messages);
+  }, [messages]);
 
   function clearHistory() {
-    setMessages([])
-    setError(null)
-    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(STORAGE_KEY)
+    setMessages([]);
+    setError(null);
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(STORAGE_KEY);
   }
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const text = input.trim()
-    if (!text || isLoading) return
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || isLoading) return;
 
-    setInput('')
-    setError(null)
-    const recent = messages.slice(-MAX_HISTORY_MESSAGES)
-    const newMessages: Array<Message> = [...recent, { role: 'user', content: text }]
-    setMessages(newMessages)
-    setIsLoading(true)
+    setInput('');
+    setError(null);
+    const recent = messages.slice(-MAX_HISTORY_MESSAGES);
+    const newMessages: Array<Message> = [...recent, { role: 'user', content: text }];
+    setMessages(newMessages);
+    setIsLoading(true);
 
     try {
-      const history = newMessages.slice(0, -1)
-      const token = typeof getToken === 'function' ? getToken() : null
-      const sulaKey = sulaKeyProp ?? (typeof getSulaKey === 'function' ? getSulaKey() : null)
-      const result = await askAssistant({ message: text, history, token, sulaKey })
+      const history = newMessages.slice(0, -1);
+      const token = typeof getToken === 'function' ? getToken() : null;
+      const sulaKey = sulaKeyProp ?? (typeof getSulaKey === 'function' ? getSulaKey() : null);
+      const result = await askAssistant({ message: text, history, token, sulaKey });
 
-      let reply: string
+      let reply: string;
       if ('requestId' in result && result.useAbly) {
-        if (!waitForAblyReply) throw new Error('Ably tidak dikonfigurasi (waitForAblyReply).')
-        const ablyResult = await waitForAblyReply(result.requestId)
-        reply = 'error' in ablyResult ? ablyResult.error : ablyResult.reply
+        if (!waitForAblyReply) throw new Error('Ably tidak dikonfigurasi (waitForAblyReply).');
+        const ablyResult = await waitForAblyReply(result.requestId);
+        reply = 'error' in ablyResult ? ablyResult.error : ablyResult.reply;
       } else if ('reply' in result) {
-        reply = result.reply
+        reply = result.reply;
       } else {
-        throw new Error('Respons asisten tidak valid.')
+        throw new Error('Respons asisten tidak valid.');
       }
 
-      setMessages((prev) => [...prev.slice(-MAX_HISTORY_MESSAGES), { role: 'assistant', content: reply }])
+      setMessages((prev) => [
+        ...prev.slice(-MAX_HISTORY_MESSAGES),
+        { role: 'assistant', content: reply },
+      ]);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      const displayMessage = isQuotaOrRateLimitError(msg) ? FRIENDLY_QUOTA_MESSAGE : `Maaf, SULA mengalami kesalahan: ${msg}`
-      if (!isQuotaOrRateLimitError(msg)) setError(msg)
-      setMessages((prev) => [...prev.slice(-MAX_HISTORY_MESSAGES), { role: 'assistant', content: displayMessage }])
+      const msg = err instanceof Error ? err.message : String(err);
+      const displayMessage = isQuotaOrRateLimitError(msg)
+        ? FRIENDLY_QUOTA_MESSAGE
+        : `Maaf, SULA mengalami kesalahan: ${msg}`;
+      if (!isQuotaOrRateLimitError(msg)) setError(msg);
+      setMessages((prev) => [
+        ...prev.slice(-MAX_HISTORY_MESSAGES),
+        { role: 'assistant', content: displayMessage },
+      ]);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -201,7 +276,7 @@ export function SulaChatUI({
     height: '100%',
     minHeight: 0,
     fontFamily: tokens.fontFamily,
-  }
+  };
   const messagesAreaStyle: React.CSSProperties = {
     flex: 1,
     overflowY: 'auto',
@@ -212,7 +287,7 @@ export function SulaChatUI({
     minHeight: 200,
     background: tokens.bg,
     ...(compact ? { maxHeight: '50vh' } : {}),
-  }
+  };
   const bubbleBase: React.CSSProperties = {
     maxWidth: '85%',
     borderRadius: tokens.radiusLg,
@@ -222,37 +297,72 @@ export function SulaChatUI({
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
     boxShadow: tokens.shadowBubble,
-  }
+  };
 
   const handleExampleClick = (q: string) => {
-    if (isLoading) return
-    setInput(q)
-  }
+    if (isLoading) return;
+    setInput(q);
+  };
 
   return (
     <div style={containerStyle}>
       {messages.length > 0 && (
-        <div style={{ flexShrink: 0, borderBottom: `1px solid ${tokens.border}`, padding: '8px 16px', display: 'flex', justifyContent: 'flex-end', background: tokens.bgMuted }}>
+        <div
+          style={{
+            flexShrink: 0,
+            borderBottom: `1px solid ${tokens.border}`,
+            padding: '8px 16px',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            background: tokens.bgMuted,
+          }}>
           <button
             type="button"
             onClick={clearHistory}
             disabled={isLoading}
             className="sula-clear-btn"
-            style={{ background: 'none', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', fontSize: 13, color: tokens.textMuted }}
-          >
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              fontSize: 13,
+              color: tokens.textMuted,
+            }}>
             🗑 Bersihkan riwayat
           </button>
         </div>
       )}
       <div ref={scrollRef} style={messagesAreaStyle}>
         {messages.length === 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: 40, textAlign: 'center' }}>
-            <div style={{ width: 64, height: 64, borderRadius: tokens.radiusLg, background: `linear-gradient(135deg, ${tokens.primary}22 0%, ${tokens.primary}11 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 20,
+              padding: 40,
+              textAlign: 'center',
+            }}>
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: tokens.radiusLg,
+                background: `linear-gradient(135deg, ${tokens.primary}22 0%, ${tokens.primary}11 100%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
               <AssistantIcon logoUrl={logoUrl} size={64} />
             </div>
             <div>
-              <p style={{ fontWeight: 600, fontSize: 16, color: tokens.text, margin: 0 }}>{title}</p>
-              <p style={{ fontSize: 13, color: tokens.textMuted, margin: '6px 0 0 0' }}>Mulai obrolan. Contoh:</p>
+              <p style={{ fontWeight: 600, fontSize: 16, color: tokens.text, margin: 0 }}>
+                {title}
+              </p>
+              <p style={{ fontSize: 13, color: tokens.textMuted, margin: '6px 0 0 0' }}>
+                Mulai obrolan. Contoh:
+              </p>
             </div>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, width: '100%', maxWidth: 320 }}>
               {examples.map((q: string, i: number) => (
@@ -273,8 +383,7 @@ export function SulaChatUI({
                       border: `1px solid ${tokens.borderLight}`,
                       borderRadius: tokens.radiusSm,
                       cursor: isLoading ? 'not-allowed' : 'pointer',
-                    }}
-                  >
+                    }}>
                     • {q}
                   </button>
                 </li>
@@ -290,23 +399,30 @@ export function SulaChatUI({
               gap: 12,
               justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start',
               alignItems: 'flex-end',
-            }}
-          >
-            {m.role === 'assistant' && (
-              <AssistantIcon logoUrl={logoUrl} size={36} />
-            )}
+            }}>
+            {m.role === 'assistant' && <AssistantIcon logoUrl={logoUrl} size={36} />}
             <div
               style={{
                 ...bubbleBase,
                 ...(m.role === 'user'
                   ? { background: tokens.primaryDark, color: '#fff' }
                   : { background: tokens.surface, color: tokens.text }),
-              }}
-            >
-              {m.content}
+              }}>
+              {linkifyContent(m.content, i)}
             </div>
             {m.role === 'user' && (
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: tokens.border, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  background: tokens.border,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  fontSize: 18,
+                }}>
                 👤
               </div>
             )}
@@ -315,26 +431,54 @@ export function SulaChatUI({
         {isLoading && (
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
             <AssistantIcon logoUrl={logoUrl} size={36} />
-            <div style={{ ...bubbleBase, background: tokens.surface, color: tokens.textMuted, display: 'flex', alignItems: 'center', gap: 2 }}>
+            <div
+              style={{
+                ...bubbleBase,
+                background: tokens.surface,
+                color: tokens.textMuted,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+              }}>
               <span>Memproses</span>
               <span className="sula-dots" aria-hidden>
-                <span className="sula-dot" style={{ animationDelay: '0s' }}>.</span>
-                <span className="sula-dot" style={{ animationDelay: '0.2s' }}>.</span>
-                <span className="sula-dot" style={{ animationDelay: '0.4s' }}>.</span>
+                <span className="sula-dot" style={{ animationDelay: '0s' }}>
+                  .
+                </span>
+                <span className="sula-dot" style={{ animationDelay: '0.2s' }}>
+                  .
+                </span>
+                <span className="sula-dot" style={{ animationDelay: '0.4s' }}>
+                  .
+                </span>
               </span>
             </div>
           </div>
         )}
       </div>
       {error && (
-        <p style={{ padding: '10px 16px', fontSize: 13, color: tokens.error, background: `${tokens.error}12`, margin: 0, flexShrink: 0 }}>
+        <p
+          style={{
+            padding: '10px 16px',
+            fontSize: 13,
+            color: tokens.error,
+            background: `${tokens.error}12`,
+            margin: 0,
+            flexShrink: 0,
+          }}>
           {error}
         </p>
       )}
       <form
         onSubmit={handleSubmit}
-        style={{ flexShrink: 0, display: 'flex', gap: 10, padding: 16, borderTop: `1px solid ${tokens.border}`, background: tokens.bg }}
-      >
+        style={{
+          flexShrink: 0,
+          display: 'flex',
+          gap: 10,
+          padding: 16,
+          borderTop: `1px solid ${tokens.border}`,
+          background: tokens.bg,
+        }}>
         <input
           type="text"
           value={input}
@@ -369,8 +513,7 @@ export function SulaChatUI({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-          }}
-        >
+          }}>
           ➤
         </button>
       </form>
@@ -383,5 +526,5 @@ export function SulaChatUI({
         .sula-example-btn:hover:not(:disabled) { border-color: ${tokens.primary}; color: ${tokens.primary}; background: ${tokens.primary}0a; }
       `}</style>
     </div>
-  )
+  );
 }

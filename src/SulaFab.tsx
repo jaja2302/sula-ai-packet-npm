@@ -1,7 +1,8 @@
-import React, { useMemo, useState, useEffect } from 'react'
-import { SulaChatUI } from './SulaChat'
-import { createAskSulaViaAbly } from './sulaAbly'
-import type { SulaFabProps } from './types'
+import React, { useEffect, useMemo, useState } from 'react';
+
+import { createAskSulaViaAbly } from './sulaAbly';
+import { SulaChatUI } from './SulaChat';
+import type { SulaFabProps } from './types';
 
 export function SulaFab({
   appId,
@@ -20,33 +21,35 @@ export function SulaFab({
   logoUrl,
   examplePrompts,
 }: SulaFabProps) {
-  const resolvedAblyKey = ablyApiKey ?? (typeof getAblyKey === 'function' ? getAblyKey() : null)
+  const resolvedAblyKey = ablyApiKey ?? (typeof getAblyKey === 'function' ? getAblyKey() : null);
   const askAssistant = useMemo(() => {
     if (resolvedAblyKey) {
-      return createAskSulaViaAbly(resolvedAblyKey, { appId, getToken, getSulaKey })
+      return createAskSulaViaAbly(resolvedAblyKey, { appId, getToken, getSulaKey });
     }
-    return askAssistantProp
-  }, [resolvedAblyKey, appId, getToken, getSulaKey, askAssistantProp])
+    return askAssistantProp;
+  }, [resolvedAblyKey, appId, getToken, getSulaKey, askAssistantProp]);
 
-  const [open, setOpen] = useState(false)
-  const [internalPath, setInternalPath] = useState(typeof window !== 'undefined' ? window.location.pathname : '')
+  const [open, setOpen] = useState(false);
+  const [internalPath, setInternalPath] = useState(
+    typeof window !== 'undefined' ? window.location.pathname : ''
+  );
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    const onPopState = () => setInternalPath(window.location.pathname)
-    window.addEventListener('popstate', onPopState)
-    return () => window.removeEventListener('popstate', onPopState)
-  }, [])
+    if (typeof window === 'undefined') return;
+    const onPopState = () => setInternalPath(window.location.pathname);
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
-  const pathname = pathnameProp ?? internalPath
-  const visible = !showWhenPathPrefix || pathname.startsWith(showWhenPathPrefix)
-  if (!visible) return null
-  if (!askAssistant) return null
+  const pathname = pathnameProp ?? internalPath;
+  const visible = !showWhenPathPrefix || pathname.startsWith(showWhenPathPrefix);
+  if (!visible) return null;
+  if (!askAssistant) return null;
 
-  const primaryDark = '#4f46e5'
-  const border = '#e2e8f0'
-  const bgMuted = '#f8fafc'
-  const textMuted = '#64748b'
+  const primaryDark = '#4f46e5';
+  const border = '#e2e8f0';
+  const bgMuted = '#f8fafc';
+  const textMuted = '#64748b';
 
   const fabStyle: React.CSSProperties = {
     position: 'fixed',
@@ -65,7 +68,7 @@ export function SulaFab({
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: 24,
-  }
+  };
   const overlayStyle: React.CSSProperties = {
     position: 'fixed',
     inset: 0,
@@ -77,7 +80,7 @@ export function SulaFab({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-  }
+  };
   const dialogStyle: React.CSSProperties = {
     background: '#fff',
     borderRadius: 16,
@@ -88,7 +91,7 @@ export function SulaFab({
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-  }
+  };
   const headerStyle: React.CSSProperties = {
     padding: '14px 18px',
     borderBottom: `1px solid ${border}`,
@@ -99,7 +102,7 @@ export function SulaFab({
     alignItems: 'center',
     gap: 10,
     color: '#0f172a',
-  }
+  };
   const closeStyle: React.CSSProperties = {
     marginLeft: 'auto',
     background: 'none',
@@ -114,7 +117,7 @@ export function SulaFab({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-  }
+  };
 
   return (
     <>
@@ -123,8 +126,7 @@ export function SulaFab({
         onClick={() => setOpen(true)}
         className="sula-fab-btn"
         style={fabStyle}
-        aria-label="Buka SULA"
-      >
+        aria-label="Buka SULA">
         💬
       </button>
       {open && (
@@ -133,17 +135,30 @@ export function SulaFab({
           aria-modal="true"
           aria-labelledby="sula-dialog-title"
           style={overlayStyle}
-          onClick={(e) => e.target === e.currentTarget && setOpen(false)}
-        >
+          onClick={(e) => e.target === e.currentTarget && setOpen(false)}>
           <div style={dialogStyle} onClick={(e) => e.stopPropagation()}>
             <div style={headerStyle}>
               {logoUrl ? (
-                <img src={logoUrl} alt="" style={{ width: 28, height: 28, objectFit: 'contain', flexShrink: 0 }} />
+                <img
+                  src={logoUrl}
+                  alt=""
+                  style={{ width: 28, height: 28, objectFit: 'contain', flexShrink: 0 }}
+                />
               ) : (
                 <span style={{ fontSize: 20 }}>💬</span>
               )}
-              <span id="sula-dialog-title">{title}</span>
-              <button type="button" className="sula-close-btn" style={closeStyle} onClick={() => setOpen(false)} aria-label="Tutup">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span id="sula-dialog-title">{title}</span>
+                <span id="sula-dialog-operational-hours" style={{ fontSize: 12, color: textMuted }}>
+                  Jam operasional: 07:00 - 17:00
+                </span>
+              </div>
+              <button
+                type="button"
+                className="sula-close-btn"
+                style={closeStyle}
+                onClick={() => setOpen(false)}
+                aria-label="Tutup">
                 ×
               </button>
             </div>
@@ -153,8 +168,8 @@ export function SulaFab({
                 getToken={getToken}
                 sulaKey={sulaKey}
                 getSulaKey={getSulaKey}
-                useAbly={!!resolvedAblyKey ? false : useAbly}
-                waitForAblyReply={!!resolvedAblyKey ? undefined : waitForAblyReply}
+                useAbly={resolvedAblyKey ? false : useAbly}
+                waitForAblyReply={resolvedAblyKey ? undefined : waitForAblyReply}
                 title={title}
                 placeholder={placeholder}
                 compact
@@ -172,5 +187,5 @@ export function SulaFab({
         .sula-close-btn:hover { background: rgba(0,0,0,0.06); color: #0f172a; }
       `}</style>
     </>
-  )
+  );
 }
